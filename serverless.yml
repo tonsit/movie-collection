@@ -1,0 +1,49 @@
+service: movie-collection
+# app and org for use with dashboard.serverless.com
+app: movies
+org: tonsit
+frameworkVersion: "=1.59.1"
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: dev
+  region: us-east-1
+  environment:
+    COLLECTION_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+
+functions:
+  create:
+    handler: collection.create
+    events:
+      - http:
+          path: movies
+          method: post
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+          - dynamodb:UpdateItem
+          - dynamodb:DeleteItem
+        Resource: !GetAtt DynamoDB Arn
+
+resources:
+  Resources:
+    DynamoDB:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: "id"
+            AttributeType: "S"
+        KeySchema:
+          - AttributeName: "id"
+            KeyType: HASH
+        ProvisionedThroughPut:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+        TableName: ${self:provider.environment.TABLE}         
