@@ -6,11 +6,23 @@ frameworkVersion: "=1.59.1"
 
 provider:
   name: aws
+  apiKeys:
+    - main
   runtime: nodejs12.x
   stage: dev
   region: us-east-1
   environment:
     COLLECTION_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: !GetAtt [ DynamoDB, Arn ]
 
 functions:
   create:
@@ -19,17 +31,53 @@ functions:
       - http:
           path: movies
           method: post
-    iamRoleStatements:
-      - Effect: Allow
-        Action:
-          - dynamodb:Query
-          - dynamodb:Scan
-          - dynamodb:GetItem
-          - dynamodb:PutItem
-          - dynamodb:UpdateItem
-          - dynamodb:DeleteItem
-        Resource: !GetAtt DynamoDB Arn
+          private: true
+          request:
+            schema:
+              application/json: ${file(schema/movies.json)}
+            
 
+  search:
+    handler: collection.search
+    events:
+      - http:
+          path: movies
+          method: get
+          private: true
+
+  read:
+    handler: collection.read
+    events:
+      - http:
+          path: movies/{id}
+          method: get
+          private: true
+          parameters:
+            path:
+              id: true
+
+  update:
+    handler: collection.update
+    events:
+      - http:
+          path: movies/{id}
+          method: patch
+          private: true
+          parameters:
+            path:
+              id: true
+
+  delete:
+    handler: collection.delete
+    events:
+      - http:
+          path: movies/{id}
+          method: delete
+          private: true
+          parameters:
+            path:
+              id: true
+  
 resources:
   Resources:
     DynamoDB:
@@ -42,8 +90,5 @@ resources:
         KeySchema:
           - AttributeName: "id"
             KeyType: HASH
-        ProvisionedThroughPut:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
-
-        TableName: ${self:provider.environment.TABLE}         
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:provider.environment.COLLECTION_TABLE}         
