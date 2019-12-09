@@ -1,0 +1,25 @@
+{
+    "definitions": {},
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Movie Schema",
+    "required" : ["title", "format", "year", "length", "rating"],
+    "properties": {
+      "title" : {
+        "type": "string"
+      },
+      "format" : {
+        "type": "string",
+        "enum" : ["VHS", "DVD", "Streaming"]
+      },
+      "year" : {
+        "type": "string"
+      },
+      "length" : {
+        "type": "string"
+      },
+      "rating" : {
+        "type": "string"
+      }
+    }
+}
