@@ -1,74 +1,54 @@
 'use strict';
 
-const uuid = require('uuid/v4');
 const AWS = require('aws-sdk');
-
 const db = new AWS.DynamoDB.DocumentClient();
-
 const table = process.env.COLLECTION_TABLE;
+const QueryBuilder = require('./query-builder.js');
+const queryBuilder = new QueryBuilder(table);
+const ErrorResponse = require('./error-response.js');
+const SuccessResponse = require('./success-response.js');
 
 module.exports.create = async event => {
   const body = JSON.parse(event.body);
-  const movie = {
-    title: body.title,
-    year: body.year,
-    format: body.format,
-    length: body.length,
-    year: body.year,
-    rating: body.rating
-  };
-  const query = {
-    TableName: table,
-    Item: {
-      id: uuid(),
-      details: movie
-    },
-    ReturnValues: 'ALL_OLD'
-  }
+  const query = queryBuilder.create(body);
 
   try {
     const result = await db.put(query).promise();
-    return successResponse({id: query.Item.id});
+    return new SuccessResponse({id: query.Item.id});
+
   } catch (error) {
-    return errorResponse(error);
+    return new ErrorResponse(error);
+
   }
 }
 
 
 module.exports.search = async event => {
   const body = JSON.parse(event.body);
-  const query = {
-    TableName: table,
-  }
+  const query = queryBuilder.search(body);
   
   try {
     const result = await db.scan(query).promise();
-    let results = [];
-    result.Items.forEach((item) => results.push(item));
-    return successResponse(results);
+    return new SuccessResponse(result);
   
   } catch (error) {
-    return errorResponse(error);
+    return new ErrorResponse(error);
   
   }
 };
 
 module.exports.read = async event => {
-  const query = {
-    TableName: table,
-    Key: {
-      id: event.pathParameters.id
-    }
-  };
+  const query = queryBuilder.read(event.pathParameters.id);
   try {
     const result = await db.get(query).promise();
     if (!result.hasOwnProperty('Item')) {
-      return errorResponse('Not found', 404);
+      return new ErrorResponse('Not found', 404);
+
     }
-    return successResponse(result);
+    return new SuccessResponse(result);
   
   } catch (error) {
-    return errorResponse(error);
+    return new ErrorResponse(error);
  
   }
 };
@@ -76,74 +56,28 @@ module.exports.read = async event => {
 module.exports.update = async event => {
   const body = JSON.parse(event.body);
 
-  const query = getUpdateQuery(event.pathParameters.id, body);
+  const query = queryBuilder.update(event.pathParameters.id, body);
   console.log(query);
   
   try {
     const result = await db.update(query).promise();
-    return successResponse(result);
+    return new SuccessResponse(result);
 
   } catch (error) {
-    return errorResponse(error);
+    return new ErrorResponse(error);
 
   }
 };
 
-
 module.exports.delete = async event => {
-  const query = {
-    TableName: table,
-    Key: {
-      id: event.pathParameters.id
-    }
-  }
+  const query = queryBuilder.delete(event.pathParameters.id);
   
   try {
     const result = await db.delete(query).promise();
-    return successResponse(result, 204);
+    return new SuccessResponse(result, 204);
 
   } catch (error) {
-    return errorResponse(error);
+    return new ErrorResponse(error);
 
   }
 };
-
-function errorResponse(error, code = 400) {
-  console.error(error);
-  return {
-    statusCode: code,
-    body: 'Error with request',
-  };
-}
-
-function successResponse(result, code = 200) {
-  console.log(result);
-  return {
-    statusCode: code,
-    body: JSON.stringify(result),
-  };
-}
-
-function getUpdateQuery(id, body) {
-  let names = {
-    '#d': 'details'
-  };
-  let values = {};
-  let expression = 'set';
-  Object.entries(body).forEach(([key, item]) => {
-      expression += ` #d.#${key} = :${key},`;
-      names[`#${key}`] = key;
-      values[`:${key}`] = item;
-  })
-  return {
-    TableName: table,
-    Key: {
-      id: id
-    },
-    UpdateExpression: expression.slice(0, -1),
-    ExpressionAttributeValues: values,
-    ExpressionAttributeNames: names,
-    ReturnValues: "UPDATED_NEW"
-  };
-}
-  
