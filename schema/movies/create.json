@@ -6,20 +6,27 @@
     "required" : ["title", "format", "year", "length", "rating"],
     "properties": {
       "title" : {
-        "type": "string"
+        "type": "string",
+        "pattern": "[\\w\\?!\\-\\._ ]+"
       },
       "format" : {
         "type": "string",
         "enum" : ["VHS", "DVD", "Streaming"]
       },
       "year" : {
-        "type": "string"
+        "type": "number",
+        "maximum": 2100,
+        "minimum": 1800
       },
       "length" : {
-        "type": "string"
+        "type": "number",
+        "maximum": 500,
+        "minimum": 0
       },
       "rating" : {
-        "type": "string"
+        "type": "number",
+        "maximum": 5,
+        "minimum": 1
       }
     }
 }

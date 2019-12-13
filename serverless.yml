@@ -2,7 +2,7 @@ service: movie-collection
 # app and org for use with dashboard.serverless.com
 app: movies
 org: tonsit
-frameworkVersion: "=1.59.1"
+frameworkVersion: "=1.59.3"
 
 provider:
   name: aws
@@ -34,8 +34,7 @@ functions:
           private: true
           request:
             schema:
-              application/json: ${file(schema/movies.json)}
-            
+              application/json: ${file(schema/movies/create.json)}
 
   search:
     handler: collection.search
@@ -66,7 +65,10 @@ functions:
           parameters:
             path:
               id: true
-
+          request:
+            schema:
+              application/json: ${file(schema/movies/update.json)}
+  
   delete:
     handler: collection.delete
     events:

@@ -1,0 +1,31 @@
+{
+    "definitions": {},
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Movie Schema",
+    "properties": {
+      "title" : {
+        "type": "string",
+        "pattern": "[\\w\\?!\\-\\._ ]+"
+      },
+      "format" : {
+        "type": "string",
+        "enum" : ["VHS", "DVD", "Streaming"]
+      },
+      "year" : {
+        "type": "number",
+        "maximum": 2100,
+        "minimum": 1800
+      },
+      "length" : {
+        "type": "number",
+        "maximum": 500,
+        "minimum": 0
+      },
+      "rating" : {
+        "type": "number",
+        "maximum": 5,
+        "minimum": 1
+      }
+    }
+}
