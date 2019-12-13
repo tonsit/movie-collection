@@ -17,33 +17,35 @@ module.exports.create = async event => {
     year: body.year,
     rating: body.rating
   };
-  const params = {
+  const query = {
     TableName: table,
     Item: {
       id: uuid(),
       details: movie
-    }
+    },
+    ReturnValues: 'ALL_OLD'
   }
-  
+
   try {
-    const result = await db.put(params).promise();
-    return successResponse(params, result);
-  
+    const result = await db.put(query).promise();
+    return successResponse({id: query.Item.id});
   } catch (error) {
     return errorResponse(error);
-
   }
-};
+}
+
 
 module.exports.search = async event => {
   const body = JSON.parse(event.body);
-  const params = {
+  const query = {
     TableName: table,
   }
   
   try {
-    const result = await db.scan(params).promise();
-    return successResponse(params, result);
+    const result = await db.scan(query).promise();
+    let results = [];
+    result.Items.forEach((item) => results.push(item));
+    return successResponse(results);
   
   } catch (error) {
     return errorResponse(error);
@@ -52,42 +54,34 @@ module.exports.search = async event => {
 };
 
 module.exports.read = async event => {
-  const body = JSON.parse(event.body);
-  const params = {
+  const query = {
     TableName: table,
     Key: {
-      id: {
-        S: body.id
-      }
+      id: event.pathParameters.id
     }
-  }
-  
+  };
   try {
-    const result = await db.query(params).promise();
-    return successResponse(params, result);
+    const result = await db.get(query).promise();
+    if (!result.hasOwnProperty('Item')) {
+      return errorResponse('Not found', 404);
+    }
+    return successResponse(result);
   
   } catch (error) {
     return errorResponse(error);
-  
+ 
   }
 };
 
 module.exports.update = async event => {
   const body = JSON.parse(event.body);
-  const movie = {
-    title: body.title
-  };
-  const params = {
-    TableName: table,
-    Item: {
-      id: body.id,
-      details: movie
-    }
-  }
+
+  const query = getUpdateQuery(event.pathParameters.id, body);
+  console.log(query);
   
   try {
-    const result = await db.put(params).promise();
-    return successResponse(params, result);
+    const result = await db.update(query).promise();
+    return successResponse(result);
 
   } catch (error) {
     return errorResponse(error);
@@ -97,41 +91,59 @@ module.exports.update = async event => {
 
 
 module.exports.delete = async event => {
-  const body = JSON.parse(event.body);
-
-  const params = {
+  const query = {
     TableName: table,
     Key: {
-      id: {
-        S: body.id
-      }
+      id: event.pathParameters.id
     }
   }
   
   try {
-    const result = await db.delete(params).promise();
-    return successResponse(params, result, 204);
+    const result = await db.delete(query).promise();
+    return successResponse(result, 204);
 
   } catch (error) {
-    return errorResponse();
+    return errorResponse(error);
 
   }
 };
 
 function errorResponse(error, code = 400) {
+  console.error(error);
   return {
     statusCode: code,
-    error: error.stack
+    body: 'Error with request',
   };
 }
 
-function successResponse(params, result, code = 200) {
+function successResponse(result, code = 200) {
+  console.log(result);
   return {
     statusCode: code,
-    body: JSON.stringify(params, result),
+    body: JSON.stringify(result),
   };
 }
 
-
-
-
+function getUpdateQuery(id, body) {
+  let names = {
+    '#d': 'details'
+  };
+  let values = {};
+  let expression = 'set';
+  Object.entries(body).forEach(([key, item]) => {
+      expression += ` #d.#${key} = :${key},`;
+      names[`#${key}`] = key;
+      values[`:${key}`] = item;
+  })
+  return {
+    TableName: table,
+    Key: {
+      id: id
+    },
+    UpdateExpression: expression.slice(0, -1),
+    ExpressionAttributeValues: values,
+    ExpressionAttributeNames: names,
+    ReturnValues: "UPDATED_NEW"
+  };
+}
+  
